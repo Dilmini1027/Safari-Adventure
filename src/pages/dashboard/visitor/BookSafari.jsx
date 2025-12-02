@@ -3,11 +3,12 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useBooking } from '../../../contexts/BookingContext';
-import { useNotifications } from '../../../contexts/NotificationContext';
 import { useMessages } from '../../../contexts/MessageContext';
+import { useDestinations } from '../../../contexts/DestinationContext';
 import Breadcrumb from '../../../components/Breadcrumb';
 import MessageInbox from '../../../components/MessageInbox';
 import PaymentPage from '../../../components/PaymentPage';
+import StarRating from '../../../components/StarRating';
 import {
   CalendarDaysIcon,
   MapPinIcon,
@@ -17,18 +18,23 @@ import {
   XCircleIcon,
   ExclamationTriangleIcon,
   ChatBubbleLeftRightIcon,
-  CreditCardIcon
+  CreditCardIcon,
+  StarIcon,
+ 
 } from '@heroicons/react/24/outline';
 import NavBar from '../../../components/MobileNavBar';
 
 const BookSafari = () => {
   const { user } = useAuth();
-  const { getUserBookings } = useBooking();
+  const { getUserBookings, createBooking, updateBookingStatus } = useBooking();
   const { getUnreadMessagesCount } = useMessages();
+  const { submitRating, getUserRating,  getDestinationById } = useDestinations();
   const [activeTab, setActiveTab] = useState('book');
   const [showMessageInbox, setShowMessageInbox] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedBookingForPayment, setSelectedBookingForPayment] = useState(null);
+  const [ratingReviews, setRatingReviews] = useState({});
+  const [submittingRating, setSubmittingRating] = useState({});
   
   const unreadMessagesCount = getUnreadMessagesCount(user?.id);
   
@@ -83,6 +89,51 @@ const BookSafari = () => {
     setSelectedBookingForPayment(null);
   };
 
+  const handleRatingSubmit = async (destinationId, rating, review = '') => {
+    setSubmittingRating(prev => ({ ...prev, [destinationId]: true }));
+    
+    try {
+      const result = await submitRating(destinationId, user?.id, rating, review);
+      if (result.success) {
+        // Clear the review text after successful submission
+        setRatingReviews(prev => ({ ...prev, [destinationId]: '' }));
+        // You could show a success message here
+      }
+    } catch (error) {
+      console.error('Failed to submit rating:', error);
+    } finally {
+      setSubmittingRating(prev => ({ ...prev, [destinationId]: false }));
+    }
+  };
+
+  const getRateableDestinations = () => {
+    // Get destinations from PAID bookings ONLY
+    const paidBookings = userBookings.filter(booking => booking.status === 'paid');
+    const rateableDestinations = [];
+    
+    // Create a Set to avoid duplicates if user has multiple bookings for same destination
+    const processedDestinations = new Set();
+    
+    paidBookings.forEach(booking => {
+      if (!processedDestinations.has(booking.destinationId)) {
+        const destination = getDestinationById(booking.destinationId);
+        if (destination) {
+          const existingRating = getUserRating(booking.destinationId, user?.id);
+          rateableDestinations.push({
+            ...destination,
+            booking,
+            userRating: existingRating
+          });
+          processedDestinations.add(booking.destinationId);
+        }
+      }
+    });
+    
+    return rateableDestinations;
+  };
+
+
+
   return (
     <div className="min-h-screen bg-gray-50">
       <NavBar />
@@ -124,6 +175,19 @@ const BookSafari = () => {
                 }`}
               >
                 My Bookings ({userBookings.length})
+              </button>
+              <button
+                onClick={() => setActiveTab('ratings')}
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'ratings'
+                    ? 'border-green-500 text-green-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <div className="flex items-center space-x-1">
+                  <StarIcon className="w-4 h-4" />
+                  <span>My Ratings</span>
+                </div>
               </button>
               <button
                 onClick={() => setShowMessageInbox(true)}
@@ -206,6 +270,208 @@ const BookSafari = () => {
           </motion.div>
         )}
 
+        {/* My Ratings Tab */}
+        {activeTab === 'ratings' && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+          >
+            {getRateableDestinations().length === 0 ? (
+              <div className="text-center py-12">
+                <div className="bg-white rounded-xl shadow-lg p-8 max-w-md mx-auto">
+                  <StarIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-xl font-semibold text-gray-900 mb-2">No Paid Bookings to Rate</h3>
+                  <p className="text-gray-600 mb-6">
+                    You can only rate destinations from completed and paid safari bookings to ensure authentic reviews.
+                  </p>
+                  
+                  <div className="space-y-3">
+                    {userBookings.length === 0 ? (
+                      <Link 
+                        to="/destinations"
+                        className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold block"
+                      >
+                        Browse Destinations
+                      </Link>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => setActiveTab('history')}
+                          className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-lg font-semibold block w-full"
+                        >
+                          View My Bookings ({userBookings.length})
+                        </button>
+                        <Link 
+                          to="/destinations"
+                          className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-medium block"
+                        >
+                          Book Another Adventure
+                        </Link>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
+                  <h2 className="text-2xl font-bold text-gray-900 mb-2">Rate Your Safari Experiences</h2>
+                  <p className="text-gray-600">
+                    Share your experiences to help future travelers discover amazing destinations.
+                  </p>
+                </div>
+
+                {getRateableDestinations().map((destination, index) => (
+                  <motion.div
+                    key={`${destination.id}-${destination.booking.id}`}
+                    className="bg-white rounded-xl shadow-lg p-6"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.6, delay: index * 0.1 }}
+                  >
+                    <div className="flex items-start space-x-4">
+                      <img
+                        src={destination.image}
+                        alt={destination.name}
+                        className="w-20 h-20 object-cover rounded-lg flex-shrink-0"
+                      />
+                      
+                      <div className="flex-1">
+                        <h3 className="text-xl font-bold text-gray-900 mb-1">
+                          {destination.name}
+                        </h3>
+                        <div className="flex items-center text-gray-600 text-sm mb-2">
+                          <MapPinIcon className="w-4 h-4 mr-1" />
+                          <span>{destination.location}</span>
+                        </div>
+                        <div className="flex items-center text-gray-600 text-sm mb-4">
+                          <CalendarDaysIcon className="w-4 h-4 mr-1" />
+                          <span>
+                            Visited: {formatDate(destination.booking.startDate)} - {formatDate(destination.booking.endDate)}
+                          </span>
+                          <span className="ml-2 px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
+                            Paid Booking
+                          </span>
+                        </div>
+
+                        {destination.userRating ? (
+                          <div className="bg-green-50 rounded-lg p-4">
+                            <h4 className="font-semibold text-green-800 mb-3">Your Rating</h4>
+                            <div className="space-y-4">
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  Rating
+                                </label>
+                                <StarRating
+                                  rating={ratingReviews[destination.id + '_rating'] || destination.userRating.rating}
+                                  onRatingChange={(rating) => setRatingReviews(prev => ({
+                                    ...prev,
+                                    [destination.id + '_rating']: rating
+                                  }))}
+                                  readOnly={submittingRating[destination.id]}
+                                  size="lg"
+                                />
+                              </div>
+                              
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  Review (Optional)
+                                </label>
+                                <textarea
+                                  value={ratingReviews[destination.id] !== undefined ? ratingReviews[destination.id] : (destination.userRating.review || '')}
+                                  onChange={(e) => setRatingReviews(prev => ({
+                                    ...prev,
+                                    [destination.id]: e.target.value
+                                  }))}
+                                  placeholder="Share your experience with other travelers..."
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                  rows={3}
+                                  disabled={submittingRating[destination.id]}
+                                />
+                              </div>
+                              
+                              <button
+                                onClick={() => {
+                                  const newRating = ratingReviews[destination.id + '_rating'] || destination.userRating.rating;
+                                  const newReview = ratingReviews[destination.id] !== undefined ? ratingReviews[destination.id] : (destination.userRating.review || '');
+                                  handleRatingSubmit(destination.id, newRating, newReview);
+                                }}
+                                disabled={submittingRating[destination.id]}
+                                className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                              >
+                                {submittingRating[destination.id] ? 'Submitting...' : 'Submit'}
+                              </button>
+                              
+                              <div className="text-xs text-gray-500">
+                                Last updated: {formatDate(destination.userRating.createdAt)}
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="bg-gray-50 rounded-lg p-4">
+                            <h4 className="font-semibold text-gray-900 mb-3">Rate This Destination</h4>
+                            
+                            <div className="space-y-4">
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  Your Rating
+                                </label>
+                                <StarRating
+                                  rating={ratingReviews[destination.id + '_rating'] || 0}
+                                  onRatingChange={(rating) => setRatingReviews(prev => ({
+                                    ...prev,
+                                    [destination.id + '_rating']: rating
+                                  }))}
+                                  readOnly={submittingRating[destination.id]}
+                                  size="lg"
+                                />
+                              </div>
+                              
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  Review (Optional)
+                                </label>
+                                <textarea
+                                  value={ratingReviews[destination.id] || ''}
+                                  onChange={(e) => setRatingReviews(prev => ({
+                                    ...prev,
+                                    [destination.id]: e.target.value
+                                  }))}
+                                  placeholder="Share your experience with other travelers..."
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                  rows={3}
+                                  disabled={submittingRating[destination.id]}
+                                />
+                              </div>
+                              
+                              <button
+                                onClick={() => {
+                                  const rating = ratingReviews[destination.id + '_rating'] || 0;
+                                  const review = ratingReviews[destination.id] || '';
+                                  if (rating > 0) {
+                                    handleRatingSubmit(destination.id, rating, review);
+                                  }
+                                }}
+                                disabled={submittingRating[destination.id] || !ratingReviews[destination.id + '_rating']}
+                                className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white px-6 py-2 rounded-lg font-medium transition-colors"
+                              >
+                                {submittingRating[destination.id] ? 'Submitting...' : 'Submit'}
+                              </button>
+                            </div>
+                            
+
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+          </motion.div>
+        )}
+
         {/* Booking History Tab */}
         {activeTab === 'history' && (
           <motion.div
@@ -264,7 +530,7 @@ const BookSafari = () => {
                           <span className="ml-1 capitalize">{booking.status}</span>
                         </div>
                         <div className="text-lg font-bold text-gray-900 mt-2">
-                          ${booking.totalPrice}
+                          Rs {booking.totalPrice.toLocaleString()}
                         </div>
                         {booking.status === 'approved' && (
                           <div className="mt-3">
@@ -281,8 +547,17 @@ const BookSafari = () => {
                           </div>
                         )}
                         {booking.status === 'paid' && (
-                          <div className="mt-3 text-green-600 text-sm font-medium">
-                            ✓ Payment Completed
+                          <div className="mt-3">
+                            <div className="text-green-600 text-sm font-medium mb-2">
+                              ✓ Payment Completed
+                            </div>
+                            <button
+                              onClick={() => setActiveTab('ratings')}
+                              className="bg-yellow-100 hover:bg-yellow-200 text-yellow-800 px-3 py-1 rounded-lg text-sm font-medium transition-colors flex items-center space-x-1"
+                            >
+                              <StarIcon className="w-4 h-4" />
+                              <span>Rate Experience</span>
+                            </button>
                           </div>
                         )}
                       </div>

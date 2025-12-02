@@ -15,13 +15,15 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user is logged in from localStorage
+    // Load user from localStorage
     const savedUser = localStorage.getItem('safariUser');
     if (savedUser) {
       try {
-        setUser(JSON.parse(savedUser));
+        const userData = JSON.parse(savedUser);
+        setUser(userData);
       } catch (error) {
         localStorage.removeItem('safariUser');
+        setUser(null);
       }
     }
     setLoading(false);
@@ -29,38 +31,67 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      console.log('AuthContext login called with:', email, password);
+      // Simulate user data - create demo accounts for testing
+      const demoUsers = [
+        {
+          id: 1,
+          email: 'admin@safari.com',
+          password: 'admin123',
+          firstName: 'Admin',
+          lastName: 'User',
+          role: 'admin'
+        },
+        {
+          id: 2,
+          email: 'user@safari.com',
+          password: 'user123',
+          firstName: 'John',
+          lastName: 'Doe',
+          role: 'visitor'
+        }
+      ];
+
+      console.log('Looking for user in demo users:', demoUsers);
+      const foundUser = demoUsers.find(u => u.email === email && u.password === password);
+      console.log('Found user:', foundUser);
       
-      // Mock user data - in real app this would come from API
-      const userData = {
-        id: 1,
-        email,
-        name: email.split('@')[0].charAt(0).toUpperCase() + email.split('@')[0].slice(1),
-        role: email.includes('admin') ? 'admin' : 'visitor',
-        avatar: `https://ui-avatars.com/api/?name=${email}&background=059669&color=fff`
-      };
-      
-      setUser(userData);
-      localStorage.setItem('safariUser', JSON.stringify(userData));
-      
-      return { success: true, user: userData };
+      if (foundUser) {
+        const userData = {
+          id: foundUser.id,
+          email: foundUser.email,
+          firstName: foundUser.firstName,
+          lastName: foundUser.lastName,
+          role: foundUser.role,
+          name: `${foundUser.firstName} ${foundUser.lastName}`,
+          avatar: `https://ui-avatars.com/api/?name=${foundUser.firstName}+${foundUser.lastName}&background=059669&color=fff`,
+          token: 'demo-token-' + foundUser.id
+        };
+        
+        setUser(userData);
+        localStorage.setItem('safariUser', JSON.stringify(userData));
+        
+        return { success: true, user: userData };
+      } else {
+        return { success: false, error: 'Invalid email or password' };
+      }
     } catch (error) {
-      return { success: false, error: 'Login failed' };
+      return { success: false, error: error.message || 'Login failed' };
     }
   };
 
   const register = async (userData) => {
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
+      // Simulate registration - create new user
       const newUser = {
-        id: Date.now(),
+        id: Date.now(), // Simple ID generation
         email: userData.email,
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        role: 'visitor',
         name: `${userData.firstName} ${userData.lastName}`,
-        role: userData.role || 'visitor',
-        avatar: `https://ui-avatars.com/api/?name=${userData.firstName}+${userData.lastName}&background=059669&color=fff`
+        avatar: `https://ui-avatars.com/api/?name=${userData.firstName}+${userData.lastName}&background=059669&color=fff`,
+        token: 'demo-token-' + Date.now()
       };
       
       setUser(newUser);
@@ -68,11 +99,11 @@ export const AuthProvider = ({ children }) => {
       
       return { success: true, user: newUser };
     } catch (error) {
-      return { success: false, error: 'Registration failed' };
+      return { success: false, error: error.message || 'Registration failed' };
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
     setUser(null);
     localStorage.removeItem('safariUser');
     // Navigate to home page with logout success message

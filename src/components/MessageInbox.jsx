@@ -10,20 +10,23 @@ import {
 
 const MessageInbox = ({ isOpen, onClose }) => {
   const { user } = useAuth();
-  const { messages, sendMessage, markMessageAsRead, getMessagesByUser } = useMessages();
+  const { conversations: allConversations, sendMessage, markConversationAsRead } = useMessages();
   const [selectedConversation, setSelectedConversation] = useState(null);
   const [newMessage, setNewMessage] = useState('');
   const [conversations, setConversations] = useState([]);
 
   useEffect(() => {
-    if (user) {
-      const userMessages = getMessagesByUser(user.id);
+    if (user && allConversations && allConversations.length > 0) {
+      // Filter messages for current user
+      const userMessages = allConversations.filter(message => 
+        message.senderId === user.id || message.recipientId === user.id
+      );
       
       // Group messages by booking or conversation
       const groupedConversations = {};
       
       userMessages.forEach(message => {
-        const key = message.bookingId || 'general';
+        const key = message.bookingId || message.subject || 'general';
         if (!groupedConversations[key]) {
           groupedConversations[key] = {
             id: key,
@@ -44,9 +47,22 @@ const MessageInbox = ({ isOpen, onClose }) => {
         conv.lastMessage = conv.messages[conv.messages.length - 1];
       });
 
-      setConversations(Object.values(groupedConversations));
+      const newConversations = Object.values(groupedConversations);
+      setConversations(newConversations);
+    } else {
+      setConversations([]);
     }
-  }, [user, messages, getMessagesByUser]);
+  }, [user, allConversations]);
+
+  // Separate useEffect to update selected conversation when conversations change
+  useEffect(() => {
+    if (selectedConversation && conversations.length > 0) {
+      const updatedSelected = conversations.find(conv => conv.id === selectedConversation.id);
+      if (updatedSelected && JSON.stringify(updatedSelected) !== JSON.stringify(selectedConversation)) {
+        setSelectedConversation(updatedSelected);
+      }
+    }
+  }, [conversations]);
 
   const formatTime = (dateString) => {
     const date = new Date(dateString);
@@ -66,25 +82,33 @@ const MessageInbox = ({ isOpen, onClose }) => {
   const handleConversationClick = (conversation) => {
     setSelectedConversation(conversation);
     
-    // Mark messages as read
-    conversation.messages.forEach(message => {
-      if (!message.isRead && message.recipientId === user.id) {
-        markMessageAsRead(message.id);
-      }
-    });
+    // Mark conversation as read
+    if (conversation.unread > 0) {
+      markConversationAsRead(conversation.id);
+      // Update local state immediately for better UX
+      setConversations(prevConversations => 
+        prevConversations.map(conv => 
+          conv.id === conversation.id ? { ...conv, unread: 0 } : conv
+        )
+      );
+    }
   };
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (newMessage.trim() && selectedConversation) {
-      sendMessage({
-        senderId: user.id,
-        recipientId: 'admin',
+      const recipient = user.role === 'admin' ? selectedConversation.messages[0]?.senderId : 'admin';
+      const result = await sendMessage({
+        recipientId: recipient,
         bookingId: selectedConversation.id !== 'general' ? selectedConversation.id : null,
         subject: selectedConversation.title,
         message: newMessage.trim(),
         type: 'reply'
       });
-      setNewMessage('');
+      
+      if (result.success) {
+        setNewMessage('');
+        // Don't update selectedConversation here - let useEffect handle it when allConversations updates
+      }
     }
   };
 

@@ -1,4 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
+import { useAuth } from './AuthContext';
 
 const NotificationContext = createContext();
 
@@ -12,108 +13,139 @@ export const useNotifications = () => {
 
 export const NotificationProvider = ({ children }) => {
   const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const { user } = useAuth();
 
   useEffect(() => {
     // Load notifications from localStorage
-    const savedNotifications = localStorage.getItem('safariNotifications');
-    if (savedNotifications) {
-      try {
-        setNotifications(JSON.parse(savedNotifications));
-      } catch (error) {
-        console.error('Error loading notifications:', error);
+    if (user) {
+      const savedNotifications = localStorage.getItem(`safariNotifications_${user.id}`);
+      if (savedNotifications) {
+        try {
+          const notifications = JSON.parse(savedNotifications);
+          setNotifications(notifications);
+          setUnreadCount(notifications.filter(n => !n.isRead).length);
+        } catch (error) {
+          setNotifications([]);
+          setUnreadCount(0);
+        }
+      } else {
+        setNotifications([]);
+        setUnreadCount(0);
       }
     } else {
-      // Add sample notifications for testing
-      const sampleNotifications = [
-        {
-          id: 1001,
-          type: 'booking',
-          title: 'New Booking Request',
-          message: 'John Smith requested booking for African Safari Adventure',
-          bookingId: 1,
-          userId: 'visitor1',
-          isRead: false,
-          createdAt: new Date('2024-01-10T10:30:00').toISOString()
-        },
-        {
-          id: 1002,
-          type: 'booking',
-          title: 'New Booking Request',
-          message: 'Mike Brown requested booking for Rainforest Discovery',
-          bookingId: 3,
-          userId: 'visitor3',
-          isRead: false,
-          createdAt: new Date('2024-01-12T14:15:00').toISOString()
-        },
-        {
-          id: 1003,
-          type: 'approval',
-          title: 'Booking Approved!',
-          message: 'Your booking for Mountain Expedition has been approved!',
-          bookingId: 2,
-          userId: 'visitor2',
-          isRead: false,
-          createdAt: new Date('2024-01-08T16:45:00').toISOString()
-        }
-      ];
-      setNotifications(sampleNotifications);
+      setNotifications([]);
+      setUnreadCount(0);
     }
-  }, []);
+    setLoading(false);
+  }, [user]);
 
-  useEffect(() => {
-    // Save notifications to localStorage whenever it changes
-    localStorage.setItem('safariNotifications', JSON.stringify(notifications));
-  }, [notifications]);
-
-  const addNotification = (notification) => {
-    const newNotification = {
-      id: Date.now(),
-      ...notification,
-      isRead: false,
-      createdAt: new Date().toISOString()
-    };
-    setNotifications(prev => [newNotification, ...prev]);
-    return newNotification;
-  };
-
-  const markAsRead = (notificationId) => {
-    setNotifications(prev => 
-      prev.map(notification => 
-        notification.id === notificationId 
+  const markAsRead = async (notificationId) => {
+    try {
+      const updatedNotifications = notifications.map(notification => 
+        notification._id === notificationId || notification.id === notificationId
           ? { ...notification, isRead: true }
           : notification
-      )
-    );
+      );
+      
+      setNotifications(updatedNotifications);
+      localStorage.setItem(`safariNotifications_${user.id}`, JSON.stringify(updatedNotifications));
+      setUnreadCount(prev => Math.max(0, prev - 1));
+      
+      return { success: true };
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+      return { success: false, error: error.message };
+    }
   };
 
-  const markAllAsRead = () => {
-    setNotifications(prev => 
-      prev.map(notification => ({ ...notification, isRead: true }))
-    );
+  const markAllAsRead = async () => {
+    try {
+      const updatedNotifications = notifications.map(notification => ({ 
+        ...notification, 
+        isRead: true 
+      }));
+      
+      setNotifications(updatedNotifications);
+      localStorage.setItem(`safariNotifications_${user.id}`, JSON.stringify(updatedNotifications));
+      setUnreadCount(0);
+      
+      return { success: true };
+    } catch (error) {
+      console.error('Error marking all notifications as read:', error);
+      return { success: false, error: error.message };
+    }
   };
 
-  const deleteNotification = (notificationId) => {
-    setNotifications(prev => 
-      prev.filter(notification => notification.id !== notificationId)
-    );
+  const deleteNotification = async (notificationId) => {
+    try {
+      const updatedNotifications = notifications.filter(notification => 
+        notification._id !== notificationId && notification.id !== notificationId
+      );
+      
+      setNotifications(updatedNotifications);
+      localStorage.setItem(`safariNotifications_${user.id}`, JSON.stringify(updatedNotifications));
+      
+      return { success: true };
+    } catch (error) {
+      console.error('Error deleting notification:', error);
+      return { success: false, error: error.message };
+    }
+  };
+
+  const refreshNotifications = async () => {
+    if (!user) return;
+    
+    try {
+      const savedNotifications = localStorage.getItem(`safariNotifications_${user.id}`);
+      if (savedNotifications) {
+        const notifications = JSON.parse(savedNotifications);
+        setNotifications(notifications);
+        setUnreadCount(notifications.filter(n => !n.isRead).length);
+      }
+    } catch (error) {
+      console.error('Error refreshing notifications:', error);
+    }
+  };
+
+  const addNotification = async (notificationData) => {
+    try {
+      const notification = {
+        id: Date.now(),
+        ...notificationData,
+        createdAt: new Date().toISOString(),
+        isRead: false
+      };
+
+      const savedNotifications = localStorage.getItem(`safariNotifications_${user.id}`);
+      const allNotifications = savedNotifications ? JSON.parse(savedNotifications) : [];
+      const updatedNotifications = [notification, ...allNotifications];
+      
+      localStorage.setItem(`safariNotifications_${user.id}`, JSON.stringify(updatedNotifications));
+      setNotifications(updatedNotifications);
+      setUnreadCount(updatedNotifications.filter(n => !n.isRead).length);
+      
+      return { success: true, notification };
+    } catch (error) {
+      return { success: false, error: error.message || 'Failed to add notification' };
+    }
   };
 
   const getUnreadCount = () => {
-    return notifications.filter(notification => !notification.isRead).length;
-  };
-
-  const getNotificationsByUser = (userId) => {
-    return notifications.filter(notification => notification.userId === userId);
+    return unreadCount;
   };
 
   const value = {
     notifications,
+    loading,
+    unreadCount,
     addNotification,
     markAsRead,
     markAllAsRead,
     deleteNotification,
-    getUnreadCount,
-    getNotificationsByUser
+    refreshNotifications,
+    getUnreadCount
   };
 
   return (

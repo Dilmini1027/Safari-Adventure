@@ -40,6 +40,7 @@ const Booking = () => {
     endDate: '',
     adults: 2,
     children: 0,
+    vehicles: 1,
     roomType: 'standard',
     specialRequests: '',
     // Personal Info
@@ -56,9 +57,9 @@ const Booking = () => {
 
   const roomTypes = [
     { value: 'standard', label: 'Standard Room', price: 0 },
-    { value: 'deluxe', label: 'Deluxe Room', price: 150 },
-    { value: 'suite', label: 'Suite', price: 300 },
-    { value: 'villa', label: 'Private Villa', price: 500 }
+    { value: 'deluxe', label: 'Deluxe Room', price: 15000 },
+    { value: 'suite', label: 'Suite', price: 25000 },
+    { value: 'villa', label: 'Private Villa', price: 40000 }
   ];
 
   useEffect(() => {
@@ -84,14 +85,45 @@ const Booking = () => {
     }
   };
 
+  const calculateTripDays = () => {
+    if (!bookingData.startDate || !bookingData.endDate) return 1;
+    
+    const startDate = new Date(bookingData.startDate);
+    const endDate = new Date(bookingData.endDate);
+    const timeDiff = endDate.getTime() - startDate.getTime();
+    const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1; // Include both start and end days
+    
+    return daysDiff > 0 ? daysDiff : 1;
+  };
+
+  const getRecommendedDays = () => {
+    if (!selectedDestination) return 1;
+    return parseInt(selectedDestination.duration.split(' ')[0]) || 1;
+  };
+
   const calculateTotalPrice = () => {
     if (!selectedDestination) return 0;
     
     const basePrice = selectedDestination.price;
-    const guests = parseInt(bookingData.adults) + parseInt(bookingData.children);
+    const vehicles = parseInt(bookingData.vehicles) || 1;
+    const adults = parseInt(bookingData.adults) || 0;
     const roomUpgrade = roomTypes.find(r => r.value === bookingData.roomType)?.price || 0;
     
-    return (basePrice * guests) + roomUpgrade;
+    // Calculate trip duration
+    const tripDays = calculateTripDays();
+    const recommendedDays = getRecommendedDays();
+    const extraDays = tripDays > recommendedDays ? tripDays - recommendedDays : 0;
+    
+    // Base price multiplied by number of vehicles
+    const vehicleCost = basePrice * vehicles;
+    
+    // Extra day charges (Rs 3,000 per extra day per vehicle)
+    const extraDayCharge = extraDays * 3000 * vehicles;
+    
+    // Only charge Rs 1,000 per extra adult if more than 5 adults
+    const extraAdultCharge = adults > 5 ? (adults - 5) * 1000 : 0;
+    
+    return vehicleCost + extraDayCharge + extraAdultCharge + roomUpgrade;
   };
 
   const validateStep = (step) => {
@@ -100,6 +132,13 @@ const Booking = () => {
     if (step === 1) {
       if (!bookingData.startDate) newErrors.startDate = 'Start date is required';
       if (!bookingData.endDate) newErrors.endDate = 'End date is required';
+      if (bookingData.startDate && bookingData.endDate) {
+        const startDate = new Date(bookingData.startDate);
+        const endDate = new Date(bookingData.endDate);
+        if (endDate < startDate) {
+          newErrors.endDate = 'End date must be after start date';
+        }
+      }
       if (bookingData.adults < 1) newErrors.adults = 'At least 1 adult is required';
     }
 
@@ -170,7 +209,7 @@ const Booking = () => {
       const result = await createBooking(bookingInfo, addNotification);
       
       if (result.success) {
-        alert(`🎉 Trip Request Submitted Successfully!\n\n✅ Your safari adventure request has been sent to our team\n💰 Total Cost: $${calculateTotalPrice()}\n\n📋 Next Steps:\n1. Our admin will review your request\n2. You'll receive a notification with approval/rejection\n3. If approved, you can proceed to payment\n4. If rejected, we'll explain the reason\n\n⏰ We typically respond within 24 hours.\nThank you for choosing Safari Adventures!`);
+        alert(`🎉 Trip Request Submitted Successfully!\n\n✅ Your safari adventure request has been sent to our team\n💰 Total Cost: Rs ${calculateTotalPrice().toLocaleString()}\n\n📋 Next Steps:\n1. Our admin will review your request\n2. You'll receive a notification with approval/rejection\n3. If approved, you can proceed to payment\n4. If rejected, we'll explain the reason\n\n⏰ We typically respond within 24 hours.\nThank you for choosing Safari Adventures!`);
         navigate('/dashboard/book-safari');
       } else {
         setErrors({ submit: result.error || 'Booking failed. Please try again.' });
@@ -321,18 +360,17 @@ const Booking = () => {
                         </label>
                         <div className="relative">
                           <UserGroupIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                          <select
+                          <input
+                            type="number"
                             name="adults"
                             value={bookingData.adults}
                             onChange={handleChange}
+                            min="1"
                             className={`w-full pl-10 pr-3 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 ${
                               errors.adults ? 'border-red-300' : 'border-gray-300'
                             }`}
-                          >
-                            {[1, 2, 3, 4, 5, 6].map(num => (
-                              <option key={num} value={num}>{num} Adult{num > 1 ? 's' : ''}</option>
-                            ))}
-                          </select>
+                            placeholder="Number of adults"
+                          />
                         </div>
                         {errors.adults && (
                           <p className="mt-1 text-sm text-red-600">{errors.adults}</p>
@@ -343,17 +381,36 @@ const Booking = () => {
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           Children
                         </label>
-                        <select
+                        <input
+                          type="number"
                           name="children"
                           value={bookingData.children}
                           onChange={handleChange}
+                          min="0"
                           className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
-                        >
-                          {[0, 1, 2, 3, 4].map(num => (
-                            <option key={num} value={num}>{num} {num === 1 ? 'Child' : 'Children'}</option>
-                          ))}
-                        </select>
+                          placeholder="Number of children"
+                        />
                       </div>
+                    </div>
+
+                    <div className="mb-6">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Number of Safari Vehicles
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          name="vehicles"
+                          value={bookingData.vehicles}
+                          onChange={handleChange}
+                          min="1"
+                          className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                          placeholder="Number of vehicles needed"
+                        />
+                      </div>
+                      <p className="mt-1 text-sm text-gray-600">
+                        Recommended: {selectedDestination?.groupSize} per vehicle
+                      </p>
                     </div>
 
                     <div className="mb-6">
@@ -378,7 +435,7 @@ const Booking = () => {
                             }`}>
                               <div className="font-medium">{room.label}</div>
                               <div className="text-sm text-gray-600">
-                                {room.price > 0 ? `+$${room.price}` : 'Included'}
+                                {room.price > 0 ? `+Rs ${room.price.toLocaleString()}` : 'Included'}
                               </div>
                             </div>
                           </label>
@@ -503,6 +560,7 @@ const Booking = () => {
                           }`}
                         >
                           <option value="">Select Country</option>
+                          <option value="SL">Sri Lanka</option>
                           <option value="US">United States</option>
                           <option value="CA">Canada</option>
                           <option value="UK">United Kingdom</option>
@@ -731,7 +789,7 @@ const Booking = () => {
                       ) : (
                         <div className="flex items-center">
                           <CheckCircleIcon className="w-5 h-5 mr-2" />
-                          Confirm Trip - ${calculateTotalPrice()}
+                          Confirm Trip - Rs {calculateTotalPrice().toLocaleString()}
                         </div>
                       )}
                     </button>
@@ -774,22 +832,47 @@ const Booking = () => {
 
               <div className="space-y-3 mb-6">
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Base price per person</span>
-                  <span className="font-medium">${selectedDestination.price}</span>
+                  <span className="text-gray-600">Base price per vehicle</span>
+                  <span className="font-medium">Rs {selectedDestination.price.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">
-                    Guests ({bookingData.adults} adults, {bookingData.children} children)
+                    Safari vehicles ({bookingData.vehicles} × Rs {selectedDestination.price.toLocaleString()})
                   </span>
                   <span className="font-medium">
-                    ${selectedDestination.price * (parseInt(bookingData.adults) + parseInt(bookingData.children))}
+                    Rs {(selectedDestination.price * parseInt(bookingData.vehicles)).toLocaleString()}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">
+                    Trip duration ({calculateTripDays()} days, recommended: {getRecommendedDays()} days)
+                  </span>
+                  <span className="font-medium">
+                    {calculateTripDays() > getRecommendedDays() 
+                      ? `Rs ${((calculateTripDays() - getRecommendedDays()) * 3000 * parseInt(bookingData.vehicles)).toLocaleString()}`
+                      : 'Included'
+                    }
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">
+                    {parseInt(bookingData.adults) > 5 
+                      ? `Extra adults (${parseInt(bookingData.adults) - 5} × Rs 1,000)`
+                      : `Total guests (${bookingData.adults} adults, ${bookingData.children} children)`
+                    }
+                  </span>
+                  <span className="font-medium">
+                    {parseInt(bookingData.adults) > 5 
+                      ? `Rs ${((parseInt(bookingData.adults) - 5) * 1000).toLocaleString()}`
+                      : 'Included'
+                    }
                   </span>
                 </div>
                 {bookingData.roomType !== 'standard' && (
                   <div className="flex justify-between">
                     <span className="text-gray-600">Room upgrade</span>
                     <span className="font-medium">
-                      +${roomTypes.find(r => r.value === bookingData.roomType)?.price}
+                      +Rs {roomTypes.find(r => r.value === bookingData.roomType)?.price.toLocaleString()}
                     </span>
                   </div>
                 )}
@@ -798,7 +881,7 @@ const Booking = () => {
               <div className="border-t border-gray-200 pt-4 mb-6">
                 <div className="flex justify-between text-lg font-bold">
                   <span>Total</span>
-                  <span className="text-green-600">${calculateTotalPrice()}</span>
+                  <span className="text-green-600">Rs {calculateTotalPrice().toLocaleString()}</span>
                 </div>
               </div>
 

@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import Breadcrumb from '../components/Breadcrumb';
 import { 
   PhoneIcon, 
   EnvelopeIcon, 
@@ -114,14 +113,9 @@ const Contact = () => {
   return (
     <>
       <NavBar />
-      <div className="pt-20 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          <Breadcrumb />
-        </div>
-      </div>
-      <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 pt-0">
+      <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50">
         {/* Hero Section */}
-        <div className="bg-gradient-to-r from-green-600 to-blue-600 text-white py-16">
+        <div className="bg-gradient-to-r from-green-600 to-blue-600 text-white py-16 pt-24">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <motion.div
               initial={{ opacity: 0, y: 30 }}
@@ -358,13 +352,27 @@ const Contact = () => {
                 <div className="bg-gradient-to-r from-green-600 to-blue-600 p-4">
                   <h3 className="text-lg font-semibold text-white">Find Us</h3>
                 </div>
-                <div className="p-6">
-                  <div className="bg-gray-200 rounded-lg h-64 flex items-center justify-center">
-                    <div className="text-center text-gray-600">
-                      <MapPinIcon className="h-12 w-12 mx-auto mb-2" />
-                      <p className="font-medium">Interactive Map</p>
-                      <p className="text-sm">123 Galle Road, Colombo 03</p>
+                <div className="p-0">
+                  <div className="h-80 w-full rounded-lg overflow-hidden">
+                    <iframe
+                      src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d253550.88448105878!2d79.76482864370303!3d6.80235319375265!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3ae24fca345e1dfd%3A0x62f7d0c32a076f28!2sManju%20Eco%20Safari!5e0!3m2!1sen!2slk!4v1764590246382!5m2!1sen!2slk"
+                      width="100%"
+                      height="100%"
+                      style={{ border: 0 }}
+                      allowFullScreen=""
+                      loading="lazy"
+                      referrerPolicy="no-referrer-when-downgrade"
+                      title="Safari Adventure Office Location"
+                    />
+                  </div>
+                  <div className="p-4 bg-gray-50">
+                    <div className="flex items-center text-sm text-gray-600">
+                      <MapPinIcon className="h-4 w-4 mr-2 text-green-600" />
+                      <span>123 Galle Road, Colombo 03, Sri Lanka</span>
                     </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Click and drag to explore the map. You can also open in Google Maps for directions.
+                    </p>
                   </div>
                 </div>
               </motion.div>

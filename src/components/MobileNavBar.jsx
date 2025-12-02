@@ -65,11 +65,7 @@ const NavBar = () => {
           icon: <UserCircleIcon className="w-6 h-6" />,
           href: '/admin/visitors'
         },
-        {
-          name: 'Contact Us',
-          icon: <EnvelopeIcon className="w-6 h-6" />,
-          href: '/contact'
-        }
+        
       ];
     } else {
       // Default navigation for non-authenticated users
@@ -117,7 +113,7 @@ const NavBar = () => {
                 <div className="flex items-center space-x-4">
                   {user.role === 'visitor' && (
                     <Link to="/dashboard/book-safari" className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 text-sm rounded-lg font-medium transition-all duration-200 hover:scale-105">
-                      Book Safari
+                      Dashboard
                     </Link>
                   )}
                   {user.role === 'admin' && (

@@ -1,21 +1,41 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNotifications } from '../contexts/NotificationContext';
+import { useMessages } from '../contexts/MessageContext';
 import { useAuth } from '../contexts/AuthContext';
 import {
   BellIcon,
   CheckIcon,
   XMarkIcon,
-  TrashIcon
+  TrashIcon,
+  ChatBubbleLeftRightIcon
 } from '@heroicons/react/24/outline';
 
 const NotificationBell = () => {
   const { user } = useAuth();
   const { notifications, getUnreadCount, markAsRead, markAllAsRead, deleteNotification } = useNotifications();
+  const { unreadCount: messageUnreadCount, conversations } = useMessages();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
 
-  const unreadCount = getUnreadCount();
+  const notificationUnreadCount = getUnreadCount();
+  const totalUnreadCount = notificationUnreadCount + messageUnreadCount;
+  
+  // Create message notifications from unread conversations
+  const messageNotifications = conversations
+    .filter(msg => !msg.isRead && msg.recipientId === user?.id)
+    .slice(0, 5)
+    .map(msg => ({
+      id: `msg-${msg.id}`,
+      title: msg.subject || 'New Message',
+      message: msg.message.substring(0, 50) + (msg.message.length > 50 ? '...' : ''),
+      type: 'message',
+      createdAt: msg.createdAt,
+      isRead: msg.isRead,
+      actionUrl: '/dashboard/book-safari', // Navigate to dashboard where messages can be accessed
+      isMessage: true
+    }));
+  
   const userNotifications = notifications.filter(notif => {
     // Show notifications based on user role and targeting
     if (user?.role === 'admin') {
@@ -24,6 +44,11 @@ const NotificationBell = () => {
       return notif.userId === user?.id && notif.targetRole !== 'admin';
     }
   }).slice(0, 10);
+  
+  // Combine and sort all notifications
+  const allNotifications = [...messageNotifications, ...userNotifications]
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    .slice(0, 10);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -82,13 +107,13 @@ const NotificationBell = () => {
         className="relative p-2 text-gray-600 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 rounded-lg transition-colors"
       >
         <BellIcon className="h-6 w-6" />
-        {unreadCount > 0 && (
+        {totalUnreadCount > 0 && (
           <motion.span
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             className="absolute -top-1 -right-1 h-5 w-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-medium"
           >
-            {unreadCount > 99 ? '99+' : unreadCount}
+            {totalUnreadCount > 99 ? '99+' : totalUnreadCount}
           </motion.span>
         )}
       </button>
@@ -106,7 +131,7 @@ const NotificationBell = () => {
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold text-gray-900">Notifications</h3>
                 <div className="flex items-center space-x-2">
-                  {unreadCount > 0 && (
+                  {totalUnreadCount > 0 && (
                     <button
                       onClick={markAllAsRead}
                       className="text-sm text-green-600 hover:text-green-800 font-medium"
@@ -122,22 +147,23 @@ const NotificationBell = () => {
                   </button>
                 </div>
               </div>
-              {unreadCount > 0 && (
+              {totalUnreadCount > 0 && (
                 <p className="text-sm text-gray-600 mt-1">
-                  {unreadCount} unread notification{unreadCount !== 1 ? 's' : ''}
+                  {totalUnreadCount} unread notification{totalUnreadCount !== 1 ? 's' : ''}
+                  {messageUnreadCount > 0 && ` (${messageUnreadCount} message${messageUnreadCount !== 1 ? 's' : ''})`}
                 </p>
               )}
             </div>
 
             <div className="max-h-80 overflow-y-auto">
-              {userNotifications.length === 0 ? (
+              {allNotifications.length === 0 ? (
                 <div className="p-6 text-center">
                   <BellIcon className="h-12 w-12 text-gray-300 mx-auto mb-4" />
                   <p className="text-gray-500">No notifications yet</p>
                 </div>
               ) : (
                 <div className="divide-y divide-gray-100">
-                  {userNotifications.map((notification) => (
+                  {allNotifications.map((notification) => (
                     <motion.div
                       key={notification.id}
                       initial={{ opacity: 0, x: -20 }}
@@ -149,7 +175,11 @@ const NotificationBell = () => {
                     >
                       <div className="flex items-start space-x-3">
                         <div className="text-2xl flex-shrink-0">
-                          {getNotificationIcon(notification.type)}
+                          {notification.isMessage ? (
+                            <ChatBubbleLeftRightIcon className="h-6 w-6 text-blue-500" />
+                          ) : (
+                            <span>{getNotificationIcon(notification.type)}</span>
+                          )}
                         </div>
                         
                         <div className="flex-1 min-w-0">
@@ -206,7 +236,7 @@ const NotificationBell = () => {
               )}
             </div>
 
-            {userNotifications.length > 0 && (
+            {allNotifications.length > 0 && (
               <div className="p-3 border-t border-gray-200 bg-gray-50">
                 <button
                   onClick={() => {

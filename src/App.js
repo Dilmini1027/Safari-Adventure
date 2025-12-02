@@ -5,8 +5,10 @@ import { BookingProvider } from './contexts/BookingContext';
 import { DestinationProvider } from './contexts/DestinationContext';
 import { NotificationProvider } from './contexts/NotificationContext';
 import { MessageProvider } from './contexts/MessageContext';
+import { ToastProvider } from './components/ToastNotification';
 import ProtectedRoute from './components/ProtectedRoute';
 import ScrollToTop from './components/ScrollToTop';
+
 import './App.css';
 import HomePage from './pages/HomePage';
 import Destinations from './pages/Destinations';
@@ -19,16 +21,21 @@ import RealtimeDashboard from './pages/dashboard/admin/RealtimeDashboard';
 import DestinationManagement from './pages/dashboard/admin/DestinationManagement';
 import VisitorManagement from './pages/dashboard/admin/VisitorManagement';
 
+
+
+
 function App() {
   return (
     <AuthProvider>
-      <NotificationProvider>
-        <MessageProvider>
-          <BookingProvider>
-            <DestinationProvider>
-              <Router>
-            <ScrollToTop />
-          <div className="App">
+      <ToastProvider>
+        <NotificationProvider>
+          <MessageProvider>
+            <BookingProvider>
+              <DestinationProvider>
+
+                <Router>
+                  <ScrollToTop />
+                  <div className="App">
             <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/destinations" element={<Destinations />} />
@@ -60,13 +67,15 @@ function App() {
                 <VisitorManagement />
               </ProtectedRoute>
             } />
+
           </Routes>
-          </div>
-              </Router>
-            </DestinationProvider>
-          </BookingProvider>
-        </MessageProvider>
-      </NotificationProvider>
+                  </div>
+                </Router>
+              </DestinationProvider>
+            </BookingProvider>
+          </MessageProvider>
+        </NotificationProvider>
+      </ToastProvider>
     </AuthProvider>
   );
 }
