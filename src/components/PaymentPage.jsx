@@ -134,7 +134,7 @@ const PaymentPage = ({ booking, onPaymentComplete, onCancel }) => {
             </div>
             <div className="text-right">
               <div className="text-sm text-gray-600">Amount Due</div>
-              <div className="text-3xl font-bold text-green-600">${booking.totalPrice}</div>
+              <div className="text-3xl font-bold text-green-600">Rs {booking.totalPrice.toLocaleString()}</div>
             </div>
           </div>
         </div>
@@ -157,7 +157,7 @@ const PaymentPage = ({ booking, onPaymentComplete, onCancel }) => {
             </div>
             <div>
               <span className="text-gray-600">Total Amount:</span>
-              <div className="text-xl font-bold text-green-600">${booking.totalPrice}</div>
+              <div className="text-xl font-bold text-green-600">Rs {booking.totalPrice.toLocaleString()}</div>
             </div>
           </div>
         </div>
@@ -301,7 +301,7 @@ const PaymentPage = ({ booking, onPaymentComplete, onCancel }) => {
             <div className="flex items-center space-x-4">
               <div className="text-right">
                 <div className="text-sm text-gray-600">Total Amount</div>
-                <div className="text-2xl font-bold text-green-600">${booking.totalPrice}</div>
+                <div className="text-2xl font-bold text-green-600">Rs {booking.totalPrice.toLocaleString()}</div>
               </div>
               <button
                 onClick={handlePayment}

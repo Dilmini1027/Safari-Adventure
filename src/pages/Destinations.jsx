@@ -1,9 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
 import { useDestinations } from '../contexts/DestinationContext';
-import Breadcrumb from '../components/Breadcrumb';
 import { 
   MapPinIcon, 
   CalendarIcon, 
@@ -29,17 +28,16 @@ const Destinations = () => {
 
   const categories = [
     { value: 'all', label: 'All Categories' },
-    { value: 'wildlife', label: 'Wildlife Safari' },
-    { value: 'adventure', label: 'Adventure' },
-    { value: 'marine', label: 'Marine Life' },
-    { value: 'desert', label: 'Desert Safari' }
+    { value: 'safari', label: 'Wildlife Safari' },
+    { value: 'adventure', label: 'Adventure Safari' },
+    { value: 'eco-tour', label: 'Eco Tourism' }
   ];
 
   const priceRanges = [
     { value: 'all', label: 'All Prices' },
-    { value: 'budget', label: 'Under $2000' },
-    { value: 'mid', label: '$2000 - $2500' },
-    { value: 'luxury', label: 'Above $2500' }
+    { value: 'budget', label: 'Under Rs 30,000' },
+    { value: 'mid', label: 'Rs 30,000 - Rs 40,000' },
+    { value: 'premium', label: 'Above Rs 40,000' }
   ];
 
   const filteredDestinations = destinations.filter(dest => {
@@ -47,9 +45,9 @@ const Destinations = () => {
                          dest.location.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = selectedCategory === 'all' || dest.category === selectedCategory;
     const matchesPrice = priceRange === 'all' ||
-                        (priceRange === 'budget' && dest.price < 2000) ||
-                        (priceRange === 'mid' && dest.price >= 2000 && dest.price <= 2500) ||
-                        (priceRange === 'luxury' && dest.price > 2500);
+                        (priceRange === 'budget' && dest.price < 30000) ||
+                        (priceRange === 'mid' && dest.price >= 30000 && dest.price <= 40000) ||
+                        (priceRange === 'premium' && dest.price > 40000);
     
     return matchesSearch && matchesCategory && matchesPrice;
   });
@@ -81,14 +79,10 @@ const Destinations = () => {
     <div className="min-h-screen bg-gray-50">
       <NavBar />
       
-      <div className="pt-20 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          <Breadcrumb />
-        </div>
-      </div>
+
       
       {/* Hero Section */}
-      <section className="relative bg-gradient-to-r from-green-800 to-blue-800 text-white py-20 pt-8">
+      <section className="relative bg-gradient-to-r from-green-800 to-blue-800 text-white py-20 pt-24">
         <div className="max-w-7xl mx-auto px-4 text-center">
           <motion.h1 
             className="text-4xl md:text-5xl font-bold mb-6"
@@ -178,7 +172,7 @@ const Destinations = () => {
                   />
                   <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm rounded-full px-3 py-1">
                     <span className="text-sm font-semibold text-gray-800">
-                      ${destination.price}
+                      Rs {destination.price.toLocaleString()}
                     </span>
                   </div>
                   <div className="absolute top-4 right-4 flex items-center bg-white/90 backdrop-blur-sm rounded-full px-2 py-1">

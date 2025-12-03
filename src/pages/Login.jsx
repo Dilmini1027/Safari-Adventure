@@ -85,9 +85,12 @@ const Login = () => {
     setErrors({});
 
     try {
+      console.log('Attempting login with:', formData.email);
       const result = await login(formData.email, formData.password);
+      console.log('Login result:', result);
       
       if (result.success) {
+        console.log('Login successful, redirecting user with role:', result.user.role);
         // Redirect based on user role
         if (result.user.role === 'admin') {
           navigate('/admin/dashboard');
@@ -96,10 +99,12 @@ const Login = () => {
           navigate('/dashboard/book-safari', { replace: true });
         }
       } else {
+        console.log('Login failed:', result.error);
         setErrors({ submit: result.error || 'Login failed. Please check your credentials.' });
       }
       
     } catch (error) {
+      console.error('Login error:', error);
       setErrors({ submit: 'Login failed. Please check your credentials.' });
     } finally {
       setIsLoading(false);
@@ -135,6 +140,20 @@ const Login = () => {
             >
               Sign in to your Safari Adventure account
             </motion.p>
+            
+            {/* Demo Credentials */}
+            <motion.div 
+              className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.25 }}
+            >
+              <h4 className="text-sm font-medium text-blue-900 mb-2">Demo Credentials:</h4>
+              <div className="text-xs text-blue-800 space-y-1">
+                <div><strong>Admin:</strong> admin@safari.com / admin123</div>
+                <div><strong>Visitor:</strong> user@safari.com / user123</div>
+              </div>
+            </motion.div>
           </div>
 
           {/* Form */}

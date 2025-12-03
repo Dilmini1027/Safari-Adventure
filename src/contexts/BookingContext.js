@@ -1,4 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
+import { useAuth } from './AuthContext';
 
 const BookingContext = createContext();
 
@@ -12,240 +13,272 @@ export const useBooking = () => {
 
 export const BookingProvider = ({ children }) => {
   const [bookings, setBookings] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
 
   useEffect(() => {
-    // Load bookings from localStorage
-    const savedBookings = localStorage.getItem('safariBookings');
-    if (savedBookings) {
-      try {
-        setBookings(JSON.parse(savedBookings));
-      } catch (error) {
-        console.error('Error loading bookings:', error);
-      }
-    } else {
-      // Add sample bookings for testing - Updated format for notification system
-      const sampleBookings = [
+    // Force clear old bookings and regenerate with Sri Lankan destinations
+    localStorage.removeItem('safariBookings');
+    
+    // Always generate fresh sample data for testing
+    if (user) {
+      const samplePaidBookings = [
         {
-          id: 1,
-          userId: 'visitor1',
-          userName: 'John Smith',
-          userEmail: 'john.smith@example.com',
+          id: 1001,
           destinationId: 1,
-          destinationName: 'African Safari Adventure',
-          destinationLocation: 'Kenya & Tanzania',
-          startDate: '2024-02-15',
-          endDate: '2024-02-25',
-          adults: 2,
-          children: 0,
+          destinationName: 'Yala National Park',
+          destinationLocation: 'Southern Province, Sri Lanka',
+          startDate: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString(), // 45 days ago
+          endDate: new Date(Date.now() - 38 * 24 * 60 * 60 * 1000).toISOString(), // 38 days ago
           guests: 2,
+          roomType: 'luxury-suite',
+          totalPrice: 35000,
+          specialRequests: 'Wildlife photography tour, early morning safari preferred',
+          status: 'paid',
+          user: { id: user.id, firstName: user.firstName, lastName: user.lastName },
+          userId: user.id,
+          createdAt: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString(),
+          updatedAt: new Date(Date.now() - 38 * 24 * 60 * 60 * 1000).toISOString(),
+          adminNote: 'Payment completed. Spotted leopards and elephants during safari.'
+        },
+        {
+          id: 1004,
+          destinationId: 4,
+          destinationName: 'Wilpattu National Park',
+          destinationLocation: 'Northwest Sri Lanka',
+          startDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(), // 15 days from now
+          endDate: new Date(Date.now() + 18 * 24 * 60 * 60 * 1000).toISOString(), // 18 days from now
+          guests: 3,
           roomType: 'deluxe',
-          specialRequests: 'Vegetarian meals required',
-          phone: '+1 (555) 123-4567',
-          country: 'United States',
-          totalPrice: 5000,
-          status: 'approved',
-          createdAt: new Date('2024-01-10').toISOString(),
-          updatedAt: new Date('2024-01-10').toISOString(),
-          // Backward compatibility fields
-          destination: {
-            id: 1,
-            name: 'African Safari Adventure',
-            location: 'Kenya & Tanzania'
-          },
-          customerInfo: {
-            fullName: 'John Smith',
-            email: 'john.smith@example.com',
-            phone: '+1 (555) 123-4567',
-            dietaryRequirements: 'Vegetarian meals required'
-          },
-          travelDate: '2024-02-15'
-        },
-        {
-          id: 2,
-          userId: 'visitor2',
-          userName: 'Sarah Johnson',
-          userEmail: 'sarah.j@example.com',
-          destinationId: 2,
-          destinationName: 'Mountain Expedition',
-          destinationLocation: 'Nepal & Tibet',
-          startDate: '2024-03-20',
-          endDate: '2024-03-30',
-          adults: 3,
-          children: 1,
-          guests: 4,
-          roomType: 'suite',
-          specialRequests: 'Need connecting rooms for family',
-          phone: '+1 (555) 234-5678',
-          country: 'Canada',
-          totalPrice: 8000,
-          status: 'approved',
-          createdAt: new Date('2024-01-05').toISOString(),
-          updatedAt: new Date('2024-01-08').toISOString(),
-          adminNote: 'Approved - Premium mountain view rooms reserved',
-          // Backward compatibility fields
-          destination: {
-            id: 2,
-            name: 'Mountain Expedition',
-            location: 'Nepal & Tibet'
-          },
-          customerInfo: {
-            fullName: 'Sarah Johnson',
-            email: 'sarah.j@example.com',
-            phone: '+1 (555) 234-5678',
-            dietaryRequirements: 'Need connecting rooms for family'
-          },
-          travelDate: '2024-03-20'
-        },
-        {
-          id: 3,
-          userId: 'visitor3',
-          userName: 'Mike Brown',
-          userEmail: 'mike.brown@example.com',
-          destinationId: 3,
-          destinationName: 'Rainforest Discovery',
-          destinationLocation: 'Costa Rica',
-          startDate: '2024-04-10',
-          endDate: '2024-04-17',
-          adults: 1,
-          children: 0,
-          guests: 1,
-          roomType: 'standard',
-          specialRequests: 'Gluten-free meals, early morning tours preferred',
-          phone: '+1 (555) 345-6789',
-          country: 'United Kingdom',
-          totalPrice: 2500,
+          totalPrice: 42000,
+          specialRequests: 'Looking for leopard sightings, prefer early morning game drives',
           status: 'pending',
-          createdAt: new Date('2024-01-12').toISOString(),
-          updatedAt: new Date('2024-01-12').toISOString(),
-          // Backward compatibility fields
-          destination: {
-            id: 3,
-            name: 'Rainforest Discovery',
-            location: 'Costa Rica'
-          },
-          customerInfo: {
-            fullName: 'Mike Brown',
-            email: 'mike.brown@example.com',
-            phone: '+1 (555) 345-6789',
-            dietaryRequirements: 'Gluten-free meals, early morning tours preferred'
-          },
-          travelDate: '2024-04-10'
+          userName: user.role === 'admin' ? 'Emma Wilson' : `${user.firstName} ${user.lastName}`,
+          userEmail: user.role === 'admin' ? 'emma.w@email.com' : user.email,
+          user: { id: user.role === 'admin' ? 104 : user.id, firstName: user.role === 'admin' ? 'Emma' : user.firstName, lastName: user.role === 'admin' ? 'Wilson' : user.lastName },
+          userId: user.role === 'admin' ? 104 : user.id,
+          createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+          updatedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+          adminNote: ''
+        },
+        {
+          id: 1005,
+          destinationId: 7,
+          destinationName: 'Gal Oya National Park',
+          destinationLocation: 'Uva Province, Sri Lanka',
+          startDate: new Date(Date.now() + 25 * 24 * 60 * 60 * 1000).toISOString(), // 25 days from now
+          endDate: new Date(Date.now() + 27 * 24 * 60 * 60 * 1000).toISOString(), // 27 days from now
+          guests: 2,
+          roomType: 'suite',
+          totalPrice: 48000,
+          specialRequests: 'Interested in boat safari and swimming elephants experience',
+          status: 'approved',
+          userName: user.role === 'admin' ? 'David Rodriguez' : `${user.firstName} ${user.lastName}`,
+          userEmail: user.role === 'admin' ? 'david.r@email.com' : user.email,
+          user: { id: user.role === 'admin' ? 105 : user.id, firstName: user.role === 'admin' ? 'David' : user.firstName, lastName: user.role === 'admin' ? 'Rodriguez' : user.lastName },
+          userId: user.role === 'admin' ? 105 : user.id,
+          createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+          updatedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+          adminNote: 'Approved. Boat safari arranged for elephant watching experience.'
         }
       ];
-      setBookings(sampleBookings);
+        
+      setBookings(samplePaidBookings);
+      // Also save to localStorage so it persists
+      localStorage.setItem('safariBookings', JSON.stringify(samplePaidBookings));
+      
+      // Clear any existing ratings for fresh start - force clear
+      localStorage.removeItem('safariDestinationRatings');
+      
+      // Also clear and reset destinations to remove any cached ratings
+      localStorage.removeItem('safariDestinations');
+    } else {
+      setBookings([]);
     }
-  }, []);
+    setLoading(false);
+  }, [user]);
 
-  useEffect(() => {
-    // Save bookings to localStorage whenever it changes
-    localStorage.setItem('safariBookings', JSON.stringify(bookings));
-  }, [bookings]);
-
-  const createBooking = async (bookingData, notificationCallback = null) => {
+  const createBooking = async (bookingData) => {
     try {
-      const newBooking = {
+      const booking = {
         id: Date.now(),
         ...bookingData,
-        status: 'pending', // pending, approved, rejected
+        user: user || { id: user?.id, firstName: user?.firstName, lastName: user?.lastName },
+        userId: user?.id,
+        status: 'pending',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };
 
-      setBookings(prev => [...prev, newBooking]);
-
-      // Create notification for admin about new booking
-      if (notificationCallback) {
-        notificationCallback({
-          type: 'booking',
-          title: 'New Booking Request',
-          message: `${bookingData.userName} requested booking for ${bookingData.destinationName}`,
-          bookingId: newBooking.id,
-          fromUserId: bookingData.userId,
-          targetRole: 'admin', // Only visible to admins
-          actionUrl: '/admin/dashboard'
-        });
+      // Get all bookings from localStorage to update
+      const savedBookings = localStorage.getItem('safariBookings');
+      const allBookings = savedBookings ? JSON.parse(savedBookings) : [];
+      const updatedBookings = [...allBookings, booking];
+      
+      localStorage.setItem('safariBookings', JSON.stringify(updatedBookings));
+      
+      // Update local state based on user role
+      if (user?.role === 'admin') {
+        setBookings(updatedBookings);
+      } else {
+        setBookings(prev => [...prev, booking]);
       }
-
-      return { success: true, booking: newBooking };
+      
+      return { success: true, booking };
     } catch (error) {
-      return { success: false, error: 'Failed to create booking' };
+      return { success: false, error: error.message || 'Failed to create booking' };
     }
   };
 
-  const updateBookingStatus = (bookingId, status, note = '', callbacks = {}) => {
-    const { notificationCallback, messageCallback } = callbacks;
-    
-    setBookings(prev => prev.map(booking => {
-      if (booking.id === bookingId) {
-        const updatedBooking = { 
-          ...booking, 
-          status, 
-          adminNote: note,
-          updatedAt: new Date().toISOString() 
+  const updateBookingStatus = async (bookingId, status, note = '', callbacks = {}) => {
+    try {
+      // Get all bookings from localStorage
+      const savedBookings = localStorage.getItem('safariBookings');
+      const allBookings = savedBookings ? JSON.parse(savedBookings) : [];
+      
+      // Find the booking to get user info
+      const booking = allBookings.find(b => b._id === bookingId || b.id === bookingId);
+      
+      // Update the booking
+      const updatedBookings = allBookings.map(booking => 
+        booking._id === bookingId || booking.id === bookingId
+          ? { ...booking, status, adminNote: note, updatedAt: new Date().toISOString() }
+          : booking
+      );
+      
+      localStorage.setItem('safariBookings', JSON.stringify(updatedBookings));
+      
+      // Update local state
+      setBookings(prev => prev.map(booking => 
+        booking._id === bookingId || booking.id === bookingId
+          ? { ...booking, status, adminNote: note, updatedAt: new Date().toISOString() }
+          : booking
+      ));
+      
+      const updatedBooking = updatedBookings.find(booking => 
+        booking._id === bookingId || booking.id === bookingId
+      );
+      
+      // Send admin note as message if note exists and messageCallback is provided
+      if (note && note.trim() && callbacks.messageCallback && booking) {
+        const statusMessages = {
+          approved: 'Your booking has been approved!',
+          rejected: 'Your booking has been rejected.',
+          paid: 'Payment confirmed for your booking.'
         };
-
-        // Create notification for customer
-        if (notificationCallback) {
-          const notificationTitle = status === 'approved' ? 'Booking Approved!' : 'Booking Update';
-          const notificationMessage = status === 'approved' 
-            ? `Great news! Your booking for ${booking.destinationName} has been approved. You can now proceed to payment in your dashboard.`
-            : status === 'rejected'
-            ? `Your booking for ${booking.destinationName} was declined`
-            : `Your booking status has been updated to ${status}`;
-
-          notificationCallback({
-            type: status === 'approved' ? 'approval' : 'rejection',
-            title: notificationTitle,
-            message: notificationMessage,
-            bookingId: bookingId,
-            userId: booking.userId,
-            actionUrl: status === 'approved' ? '/dashboard/book-safari' : null
-          });
-        }
-
-        // Send message if note is provided
-        if (note && messageCallback) {
-          messageCallback({
-            senderId: 'admin', // Admin ID
-            recipientId: booking.userId,
-            bookingId: bookingId,
-            subject: `Booking ${status}: ${booking.destinationName}`,
-            message: note,
-            type: 'booking_update'
-          });
-        }
-
-        return updatedBooking;
+        
+        const messageSubject = `Booking ${status.charAt(0).toUpperCase() + status.slice(1)} - ${booking.destinationName}`;
+        const messageBody = `${statusMessages[status] || `Your booking status has been updated to ${status}.`}\n\nAdmin Note: ${note}`;
+        
+        await callbacks.messageCallback({
+          recipientId: booking.userId || booking.user?._id || `user_${booking.userEmail}`,
+          bookingId: bookingId,
+          subject: messageSubject,
+          message: messageBody,
+          type: 'booking_update'
+        });
       }
-      return booking;
-    }));
+      
+      // Send notification if callback is provided
+      if (callbacks.notificationCallback && booking) {
+        callbacks.notificationCallback({
+          title: `Booking ${status.charAt(0).toUpperCase() + status.slice(1)}`,
+          message: `Booking #${bookingId} for ${booking.destinationName} has been ${status}.`,
+          type: 'booking_update',
+          userId: booking.userId || booking.user?._id
+        });
+      }
+      
+      return { success: true, booking: updatedBooking };
+    } catch (error) {
+      return { success: false, error: error.message || 'Failed to update booking status' };
+    }
   };
 
   const getUserBookings = (userId) => {
-    return bookings.filter(booking => booking.userId === userId);
+    return bookings.filter(booking => 
+      booking.user?._id === userId || 
+      booking.userId === userId ||
+      booking.user === userId
+    );
   };
 
   const getPendingBookings = () => {
     return bookings.filter(booking => booking.status === 'pending');
   };
 
-  const getBookingStats = () => {
+  const getBookingStats = async () => {
+    // Calculate stats from all bookings in localStorage for admin
+    const savedBookings = localStorage.getItem('safariBookings');
+    const allBookings = savedBookings ? JSON.parse(savedBookings) : [];
+    const statsBookings = user?.role === 'admin' ? allBookings : bookings;
+    
     return {
-      total: bookings.length,
-      pending: bookings.filter(b => b.status === 'pending').length,
-      approved: bookings.filter(b => b.status === 'approved').length,
-      paid: bookings.filter(b => b.status === 'paid').length,
-      rejected: bookings.filter(b => b.status === 'rejected').length
+      totalBookings: statsBookings.length,
+      pendingBookings: statsBookings.filter(b => b.status === 'pending').length,
+      approvedBookings: statsBookings.filter(b => b.status === 'approved').length,
+      completedBookings: statsBookings.filter(b => b.status === 'completed').length,
+      rejectedBookings: statsBookings.filter(b => b.status === 'rejected').length,
+      paidBookings: statsBookings.filter(b => b.status === 'paid').length,
+      totalRevenue: statsBookings
+        .filter(b => ['paid', 'completed'].includes(b.status))
+        .reduce((sum, b) => sum + (b.pricing?.totalPrice || b.totalPrice || 0), 0)
     };
+  };
+
+  const processPayment = async (bookingId, paymentData) => {
+    try {
+      // Simulate payment processing
+      const savedBookings = localStorage.getItem('safariBookings');
+      const allBookings = savedBookings ? JSON.parse(savedBookings) : [];
+      
+      // Update the booking status to paid
+      const updatedBookings = allBookings.map(booking => 
+        booking._id === bookingId || booking.id === bookingId
+          ? { 
+              ...booking, 
+              status: 'paid', 
+              payment: paymentData,
+              paidAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString()
+            }
+          : booking
+      );
+      
+      localStorage.setItem('safariBookings', JSON.stringify(updatedBookings));
+      
+      // Update local state
+      setBookings(prev => prev.map(booking => 
+        booking._id === bookingId || booking.id === bookingId
+          ? { 
+              ...booking, 
+              status: 'paid', 
+              payment: paymentData,
+              paidAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString()
+            }
+          : booking
+      ));
+      
+      const updatedBooking = updatedBookings.find(booking => 
+        booking._id === bookingId || booking.id === bookingId
+      );
+      
+      return { success: true, booking: updatedBooking };
+    } catch (error) {
+      return { success: false, error: error.message || 'Payment processing failed' };
+    }
   };
 
   const value = {
     bookings,
+    loading,
     createBooking,
     updateBookingStatus,
     getUserBookings,
     getPendingBookings,
-    getBookingStats
+    getBookingStats,
+    processPayment
   };
 
   return (

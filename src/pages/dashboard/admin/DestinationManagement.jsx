@@ -14,6 +14,99 @@ import {
 } from '@heroicons/react/24/outline';
 import { motion, AnimatePresence } from 'framer-motion';
 
+// Image Preview Component
+const ImagePreview = ({ url }) => {
+  const [imageError, setImageError] = useState(false);
+  const [imageLoading, setImageLoading] = useState(true);
+  const [processedUrl, setProcessedUrl] = useState('');
+
+  React.useEffect(() => {
+    if (url) {
+      // Process different types of URLs
+      let finalUrl = url;
+      
+      // Handle Bing image URLs
+      if (url.includes('bing.com') && url.includes('mediaurl=')) {
+        try {
+          const urlParams = new URLSearchParams(url.split('?')[1]);
+          const mediaUrl = urlParams.get('mediaurl');
+          if (mediaUrl) {
+            finalUrl = decodeURIComponent(mediaUrl);
+          }
+        } catch (e) {
+          // Fallback to original URL
+        }
+      }
+      
+      // Handle other search engine image URLs
+      if (url.includes('google.com') && url.includes('imgurl=')) {
+        try {
+          const urlParams = new URLSearchParams(url.split('?')[1]);
+          const imgUrl = urlParams.get('imgurl');
+          if (imgUrl) {
+            finalUrl = decodeURIComponent(imgUrl);
+          }
+        } catch (e) {
+          // Fallback to original URL
+        }
+      }
+      
+      setProcessedUrl(finalUrl);
+      setImageLoading(true);
+      setImageError(false);
+    }
+  }, [url]);
+
+  const handleImageLoad = () => {
+    setImageLoading(false);
+    setImageError(false);
+  };
+
+  const handleImageError = () => {
+    setImageLoading(false);
+    setImageError(true);
+  };
+
+  return (
+    <div className="relative w-full h-32 bg-gray-100 rounded-lg border overflow-hidden">
+      {imageLoading && processedUrl && (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
+        </div>
+      )}
+      
+      {imageError || !processedUrl ? (
+        <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-500">
+          <PhotoIcon className="w-8 h-8 mb-2" />
+          <span className="text-sm">
+            {!processedUrl ? 'Enter image URL' : 'Could not load image'}
+          </span>
+          <span className="text-xs text-gray-400">
+            {imageError ? 'Try a direct image link or different source' : 'URL will be processed automatically'}
+          </span>
+        </div>
+      ) : (
+        <img
+          src={processedUrl}
+          alt="Destination preview"
+          className="w-full h-full object-cover"
+          onLoad={handleImageLoad}
+          onError={handleImageError}
+          style={{ display: imageLoading ? 'none' : 'block' }}
+          crossOrigin="anonymous"
+          referrerPolicy="no-referrer"
+        />
+      )}
+      
+      {processedUrl && processedUrl !== url && (
+        <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs p-1">
+          Using: {processedUrl.length > 50 ? processedUrl.substring(0, 50) + '...' : processedUrl}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const DestinationManagement = () => {
   const { destinations, addDestination, deleteDestination, updateDestination } = useDestinations();
   const [showAddForm, setShowAddForm] = useState(false);
@@ -27,13 +120,13 @@ const DestinationManagement = () => {
     duration: '',
     groupSize: '',
     image: '',
-    category: 'wildlife',
+    category: 'safari',
     description: '',
     highlights: '',
     includes: ''
   });
 
-  const categories = ['wildlife', 'adventure', 'cultural', 'luxury', 'budget'];
+  const categories = ['safari', 'adventure', 'eco-tour', 'cultural', 'luxury'];
 
   const resetForm = () => {
     setFormData({
@@ -43,7 +136,7 @@ const DestinationManagement = () => {
       duration: '',
       groupSize: '',
       image: '',
-      category: 'wildlife',
+      category: 'safari',
       description: '',
       highlights: '',
       includes: ''
@@ -209,11 +302,36 @@ const DestinationManagement = () => {
                   exit={{ opacity: 0, y: -20 }}
                   className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow duration-300"
                 >
-                  <div className="relative h-48">
+                  <div className="relative h-48 bg-gray-100">
                     <img
                       src={destination.image}
                       alt={destination.name}
                       className="w-full h-full object-cover"
+                      crossOrigin="anonymous"
+                      referrerPolicy="no-referrer"
+                      onError={(e) => {
+                        // Try to process the URL if it's a search result
+                        if (!e.target.dataset.retried) {
+                          e.target.dataset.retried = 'true';
+                          let processedUrl = destination.image;
+                          
+                          if (destination.image.includes('bing.com') && destination.image.includes('mediaurl=')) {
+                            try {
+                              const urlParams = new URLSearchParams(destination.image.split('?')[1]);
+                              const mediaUrl = urlParams.get('mediaurl');
+                              if (mediaUrl) {
+                                processedUrl = decodeURIComponent(mediaUrl);
+                                e.target.src = processedUrl;
+                                return;
+                              }
+                            } catch (err) {}
+                          }
+                        }
+                        
+                        // Fallback placeholder
+                        e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjNmNGY2Ii8+CiAgPHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzlDQTNBRiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlIG5vdCBmb3VuZDwvdGV4dD4KICA8L3N2Zz4=';
+                        e.target.className = 'w-full h-full object-contain p-8';
+                      }}
                     />
                     <div className="absolute top-3 right-3 flex space-x-2">
                       <button
@@ -237,8 +355,9 @@ const DestinationManagement = () => {
                         {destination.name}
                       </h3>
                       <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                        destination.category === 'wildlife' ? 'bg-green-100 text-green-800' :
+                        destination.category === 'safari' ? 'bg-green-100 text-green-800' :
                         destination.category === 'adventure' ? 'bg-blue-100 text-blue-800' :
+                        destination.category === 'eco-tour' ? 'bg-emerald-100 text-emerald-800' :
                         destination.category === 'cultural' ? 'bg-purple-100 text-purple-800' :
                         destination.category === 'luxury' ? 'bg-yellow-100 text-yellow-800' :
                         'bg-gray-100 text-gray-800'
@@ -262,7 +381,7 @@ const DestinationManagement = () => {
                     
                     <div className="flex items-center justify-between">
                       <div>
-                        <span className="text-2xl font-bold text-gray-900">${destination.price}</span>
+                        <span className="text-2xl font-bold text-gray-900">Rs {destination.price.toLocaleString()}</span>
                         <span className="text-gray-600 text-sm ml-1">/{destination.duration}</span>
                       </div>
                       <span className="text-sm text-gray-500">{destination.groupSize}</span>
@@ -342,7 +461,7 @@ const DestinationManagement = () => {
                     
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Price ($)
+                        Price (Rs)
                       </label>
                       <input
                         type="number"
@@ -416,16 +535,12 @@ const DestinationManagement = () => {
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors duration-200"
                       required
                     />
+                    <p className="mt-1 text-xs text-gray-500">
+                      Enter a valid image URL. Supported formats: JPG, PNG, WebP
+                    </p>
                     {formData.image && (
                       <div className="mt-2">
-                        <img
-                          src={formData.image}
-                          alt="Preview"
-                          className="w-full h-32 object-cover rounded-lg border"
-                          onError={(e) => {
-                            e.target.style.display = 'none';
-                          }}
-                        />
+                        <ImagePreview url={formData.image} />
                       </div>
                     )}
                   </div>

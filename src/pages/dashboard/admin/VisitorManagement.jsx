@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useBooking } from '../../../contexts/BookingContext';
 import NavBar from '../../../components/MobileNavBar';
@@ -27,16 +27,29 @@ const VisitorManagement = () => {
   const [showModal, setShowModal] = useState(false);
   const [adminNote, setAdminNote] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [stats, setStats] = useState({
+    totalBookings: 0,
+    pendingBookings: 0,
+    approvedBookings: 0,
+    rejectedBookings: 0
+  });
 
-  const stats = getBookingStats();
+  // Update stats when bookings change
+  React.useEffect(() => {
+    const updateStats = async () => {
+      const bookingStats = await getBookingStats();
+      setStats(bookingStats);
+    };
+    updateStats();
+  }, [bookings, getBookingStats]);
 
   // Filter bookings based on selected filter and search term
   const filteredBookings = bookings.filter(booking => {
     const matchesFilter = filter === 'all' || booking.status === filter;
     const matchesSearch = !searchTerm || 
-      booking.customerInfo.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      booking.customerInfo.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      booking.destination.name.toLowerCase().includes(searchTerm.toLowerCase());
+      booking.userName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      booking.userEmail.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      booking.destinationName.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesFilter && matchesSearch;
   }).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
@@ -83,44 +96,7 @@ const VisitorManagement = () => {
     });
   };
 
-  const calculatePaymentStatus = (booking) => {
-    const { paymentAmount, totalPrice } = booking;
-    if (!paymentAmount || !totalPrice) return { status: 'unknown', percentage: 0 };
-    
-    const percentage = (paymentAmount / totalPrice) * 100;
-    
-    if (percentage >= 100) return { status: 'full', percentage: 100 };
-    if (percentage >= 50) return { status: 'partial', percentage: Math.round(percentage) };
-    return { status: 'insufficient', percentage: Math.round(percentage) };
-  };
 
-  const getPaymentBadge = (booking) => {
-    const payment = calculatePaymentStatus(booking);
-    const badges = {
-      full: 'bg-green-100 text-green-800',
-      partial: 'bg-yellow-100 text-yellow-800',
-      insufficient: 'bg-red-100 text-red-800',
-      unknown: 'bg-gray-100 text-gray-800'
-    };
-    
-    const icons = {
-      full: <CheckIcon className="w-4 h-4" />,
-      partial: <ExclamationTriangleIcon className="w-4 h-4" />,
-      insufficient: <XCircleIcon className="w-4 h-4" />,
-      unknown: <CurrencyDollarIcon className="w-4 h-4" />
-    };
-
-    return (
-      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${badges[payment.status]}`}>
-        {icons[payment.status]}
-        <span className="ml-1">
-          {payment.status === 'full' ? 'Paid Full' : 
-           payment.status === 'partial' ? `${payment.percentage}% Paid` :
-           payment.status === 'insufficient' ? `${payment.percentage}% Paid` : 'Payment Unknown'}
-        </span>
-      </span>
-    );
-  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -146,7 +122,7 @@ const VisitorManagement = () => {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Total Bookings</p>
-                <p className="text-2xl font-semibold text-gray-900">{stats.total}</p>
+                <p className="text-2xl font-semibold text-gray-900">{stats.totalBookings || 0}</p>
               </div>
             </div>
           </div>
@@ -158,7 +134,7 @@ const VisitorManagement = () => {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Pending</p>
-                <p className="text-2xl font-semibold text-gray-900">{stats.pending}</p>
+                <p className="text-2xl font-semibold text-gray-900">{stats.pendingBookings || 0}</p>
               </div>
             </div>
           </div>
@@ -170,7 +146,7 @@ const VisitorManagement = () => {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Approved</p>
-                <p className="text-2xl font-semibold text-gray-900">{stats.approved}</p>
+                <p className="text-2xl font-semibold text-gray-900">{stats.approvedBookings || 0}</p>
               </div>
             </div>
           </div>
@@ -182,7 +158,7 @@ const VisitorManagement = () => {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Rejected</p>
-                <p className="text-2xl font-semibold text-gray-900">{stats.rejected}</p>
+                <p className="text-2xl font-semibold text-gray-900">{stats.rejectedBookings || 0}</p>
               </div>
             </div>
           </div>
@@ -259,24 +235,26 @@ const VisitorManagement = () => {
                             </div>
                           </div>
                           <div className="ml-4">
-                            <div className="text-sm font-medium text-gray-900">{booking.customerInfo.fullName}</div>
-                            <div className="text-sm text-gray-500">{booking.customerInfo.email}</div>
+                            <div className="text-sm font-medium text-gray-900">{booking.userName}</div>
+                            <div className="text-sm text-gray-500">{booking.userEmail}</div>
                           </div>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">{booking.destination.name}</div>
+                        <div className="text-sm font-medium text-gray-900">{booking.destinationName}</div>
                         <div className="text-sm text-gray-500">{booking.guests} guests</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {formatDate(booking.travelDate)}
+                        <div>{formatDate(booking.startDate)}</div>
+                        <div className="text-xs text-gray-500">to {formatDate(booking.endDate)}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-medium text-gray-900">
-                          ${booking.paymentAmount || 0} / ${booking.totalPrice || 0}
+                          Rs {(booking.totalPrice || 0).toLocaleString()}
                         </div>
-                        <div className="mt-1">
-                          {getPaymentBadge(booking)}
+                        <div className="text-xs text-gray-500">
+                          {booking.status === 'paid' ? 'Paid in full' : 
+                           booking.status === 'approved' ? 'Payment pending' : 'Awaiting approval'}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -332,17 +310,17 @@ const VisitorManagement = () => {
                     Customer Information
                   </h4>
                   <div className="space-y-2 text-sm">
-                    <p><span className="font-medium">Name:</span> {selectedBooking.customerInfo.fullName}</p>
+                    <p><span className="font-medium">Name:</span> {selectedBooking.userName}</p>
                     <p className="flex items-center gap-2">
                       <EnvelopeIcon className="h-4 w-4" />
-                      {selectedBooking.customerInfo.email}
+                      {selectedBooking.userEmail}
                     </p>
                     <p className="flex items-center gap-2">
                       <PhoneIcon className="h-4 w-4" />
-                      {selectedBooking.customerInfo.phone}
+                      {selectedBooking.phone || 'Not provided'}
                     </p>
-                    <p><span className="font-medium">Emergency Contact:</span> {selectedBooking.customerInfo.emergencyContact}</p>
-                    <p><span className="font-medium">Dietary Requirements:</span> {selectedBooking.customerInfo.dietaryRequirements || 'None'}</p>
+                    <p><span className="font-medium">Country:</span> {selectedBooking.country || 'Not specified'}</p>
+                    <p><span className="font-medium">Special Requests:</span> {selectedBooking.specialRequests || 'None'}</p>
                   </div>
                 </div>
 
@@ -352,18 +330,19 @@ const VisitorManagement = () => {
                     Booking Details
                   </h4>
                   <div className="space-y-2 text-sm">
-                    <p><span className="font-medium">Destination:</span> {selectedBooking.destination.name}</p>
+                    <p><span className="font-medium">Destination:</span> {selectedBooking.destinationName}</p>
+                    <p><span className="font-medium">Location:</span> {selectedBooking.destinationLocation}</p>
                     <p className="flex items-center gap-2">
                       <CalendarDaysIcon className="h-4 w-4" />
-                      Travel Date: {formatDate(selectedBooking.travelDate)}
+                      {formatDate(selectedBooking.startDate)} - {formatDate(selectedBooking.endDate)}
                     </p>
                     <p className="flex items-center gap-2">
                       <UsersIcon className="h-4 w-4" />
-                      Guests: {selectedBooking.guests}
+                      {selectedBooking.adults} adults, {selectedBooking.children} children
                     </p>
                     <p className="flex items-center gap-2">
                       <HomeIcon className="h-4 w-4" />
-                      Room Type: {selectedBooking.roomType}
+                      {selectedBooking.roomType?.replace('-', ' ') || 'Standard'}
                     </p>
                   </div>
                 </div>
@@ -375,19 +354,23 @@ const VisitorManagement = () => {
                   <CurrencyDollarIcon className="h-5 w-5" />
                   Payment Information
                 </h4>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                   <div>
                     <p className="font-medium text-gray-700">Total Amount</p>
-                    <p className="text-lg font-bold text-gray-900">${selectedBooking.totalPrice || 0}</p>
-                  </div>
-                  <div>
-                    <p className="font-medium text-gray-700">Paid Amount</p>
-                    <p className="text-lg font-bold text-green-600">${selectedBooking.paymentAmount || 0}</p>
+                    <p className="text-2xl font-bold text-gray-900">Rs {(selectedBooking.totalPrice || 0).toLocaleString()}</p>
                   </div>
                   <div>
                     <p className="font-medium text-gray-700">Payment Status</p>
                     <div className="mt-1">
-                      {getPaymentBadge(selectedBooking)}
+                      <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                        selectedBooking.status === 'paid' ? 'bg-green-100 text-green-800' :
+                        selectedBooking.status === 'approved' ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {selectedBooking.status === 'paid' ? 'Paid in Full' :
+                         selectedBooking.status === 'approved' ? 'Payment Pending' :
+                         'Awaiting Approval'}
+                      </span>
                     </div>
                   </div>
                 </div>
